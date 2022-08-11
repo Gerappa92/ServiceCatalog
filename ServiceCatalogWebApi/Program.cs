@@ -1,4 +1,5 @@
 using ServiceCatalogWebApi.Endpoints;
+using ServiceCatalogWebApi.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -6,6 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddTransient<ICategoryRepository, CategoryRepository>();
+builder.Services.AddTransient<IServiceRepository, ServiceRepository>();
 
 var app = builder.Build();
 

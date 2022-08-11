@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <Folder Include="Contracts\Requests\" />
+    <Folder Include="Repositories\" />
     <Folder Include="Stubs\" />
   </ItemGroup>
 

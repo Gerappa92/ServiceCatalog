@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ServiceCatalogWebApi.Models;
+using ServiceCatalogWebApi.Repositories;
 using static ServiceCatalogWebApi.Stubs.ServiceStub;
 
 namespace ServiceCatalogWebApi.Endpoints;
@@ -26,20 +27,27 @@ public static class ServiceEndpoints
             .WithTags(EndpointTag);
     }
 
-    private static IResult List([FromRoute] int categoryId, [FromQuery] int? take,
-        [FromQuery] int? skip)
+    private static IResult List(
+        [FromRoute] int categoryId,
+        [FromQuery] int? take,
+        [FromQuery] int? skip,
+        [FromServices] IServiceRepository repository)
     {
-        var services = Services.Where(x => x.Category.Id == categoryId).Skip(skip.GetValueOrDefault(0)).Take(take.GetValueOrDefault(10));
+        var services = repository.GetAll().Where(x => x.Category.Id == categoryId).Skip(skip.GetValueOrDefault(0)).Take(take.GetValueOrDefault(10));
         return Results.Ok(new { services = services, total = Services.Count });
     }
 
-    private static IResult Get([FromRoute] int serviceId)
+    private static IResult Get(
+        [FromRoute] int serviceId,
+        [FromServices] IServiceRepository repository)
     {
-        var service = Services.FirstOrDefault(x => x.Id == serviceId);
+        var service = repository.FirstOrDefault(serviceId);
         return service == null ? Results.NotFound() : Results.Ok(new { service = service });
     }
 
-    private static IResult Add([FromBody] AddServiceRequest body)
+    private static IResult Add(
+        [FromBody] AddServiceRequest body,
+        [FromServices] IServiceRepository repository)
     {
         if (string.IsNullOrWhiteSpace(body.Name)
             || !Categories.Exists(x => x.Id == body.CategoryId))
@@ -48,20 +56,22 @@ public static class ServiceEndpoints
         }
 
         var newService = new Service(Services.Max(x => x.Id) + 1, body.Name, Categories.First(x => x.Id == body.CategoryId));
-        Services.Add(newService);
+        repository.Add(newService);
         return Results.Created($"/api/services/{newService.Id}", body);
     }
 
     private static IResult Update(
         [FromRoute] int serviceId,
-        [FromBody] AddServiceRequest body)
+        [FromBody] AddServiceRequest body,
+        [FromServices] IServiceRepository repository,
+        [FromServices] ICategoryRepository categoryRepository)
     {
-        var service = Services.FirstOrDefault(x => x.Id == serviceId);
+        var service = repository.FirstOrDefault(serviceId);
         if (service == null)
         {
             return Results.NotFound();
         }
-        var category = Categories.FirstOrDefault(x => x.Id == body.CategoryId);
+        var category = categoryRepository.FirstOrDefault(body.CategoryId);
         if (string.IsNullOrWhiteSpace(body.Name)
             || category == null)
         {
@@ -74,15 +84,16 @@ public static class ServiceEndpoints
     }
 
     private static IResult Delete(
-        [FromRoute] int serviceId)
+        [FromRoute] int serviceId,
+        [FromServices] IServiceRepository repository)
     {
-        var service = Services.FirstOrDefault(x => x.Id == serviceId);
+        var service = repository.FirstOrDefault(serviceId);
         if (service == null)
         {
             return Results.NotFound();
         }
 
-        Services.Remove(service);
+        repository.Remove(service);
         return Results.NoContent();
     }
 }

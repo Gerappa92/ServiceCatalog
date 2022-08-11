@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ServiceCatalogWebApi.Models;
-using static ServiceCatalogWebApi.Stubs.ServiceStub;
+using ServiceCatalogWebApi.Repositories;
 
 namespace ServiceCatalogWebApi.Endpoints;
 
@@ -26,35 +26,40 @@ public static class CategoryEndpoints
             .WithTags(EndpointTag);
     }
 
-    private static IResult List()
+    private static IResult List([FromServices] ICategoryRepository repository)
     {
-        return Results.Ok(new { categories = Categories });
+        return Results.Ok(new { categories = repository.GetAll() });
     }
 
-    private static IResult Get([FromRoute] int categoryId)
+    private static IResult Get(
+        [FromRoute] int categoryId,
+        [FromServices] ICategoryRepository repository)
     {
-        var categoryFind = Categories.FirstOrDefault(x => x.Id == categoryId);
+        var categoryFind = repository.FirstOrDefault(categoryId);
         return categoryFind == null ? Results.NotFound() : Results.Ok(new { category = categoryFind });
     }
 
-    private static IResult Add([FromBody] AddCategoryRequest body)
+    private static IResult Add(
+        [FromBody] AddCategoryRequest body,
+        [FromServices] ICategoryRepository repository)
     {
         if (string.IsNullOrWhiteSpace(body.Name)
-            || Categories.Exists(x => x.Name.Equals(body.Name, StringComparison.InvariantCultureIgnoreCase)))
+            || repository.Exists(body.Name))
         {
             return Results.BadRequest();
         }
 
-        var newCategory = new ServiceCategory(Categories.Max(x => x.Id) + 1, body.Name);
-        Categories.Add(newCategory);
+        var newCategory = new ServiceCategory(repository.GetAll().Max(x => x.Id) + 1, body.Name);
+        repository.Add(newCategory);
         return Results.Created($"/api/categories/{newCategory.Id}", body);
     }
 
     private static IResult Update(
         [FromRoute] int categoryId,
-        [FromBody] AddCategoryRequest body)
+        [FromBody] AddCategoryRequest body,
+        [FromServices] ICategoryRepository repository)
     {
-        var category = Categories.FirstOrDefault(x => x.Id == categoryId);
+        var category = repository.FirstOrDefault(categoryId);
         if (category == null)
         {
             return Results.NotFound();
@@ -69,15 +74,16 @@ public static class CategoryEndpoints
     }
 
     private static IResult Delete(
-        [FromRoute] int categoryId)
+        [FromRoute] int categoryId,
+        [FromServices] ICategoryRepository repository)
     {
-        var category = Categories.FirstOrDefault(x => x.Id == categoryId);
+        var category = repository.FirstOrDefault(categoryId);
         if (category == null)
         {
             return Results.NotFound();
         }
 
-        Categories.Remove(category);
+        repository.Remove(category);
         return Results.NoContent();
     }
 }
